@@ -1,0 +1,2 @@
+pyinstaller==5.4.1
+xdis==6.0.4
