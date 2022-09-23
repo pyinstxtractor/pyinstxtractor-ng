@@ -6,6 +6,7 @@ This project is a fork of [pyinstxtractor](https://github.com/extremecoders-re/p
 
 pyinstxtractor-ng uses the [xdis](https://github.com/rocky/python-xdis/) library to unmarshal Python bytecode and as a result there is NO requirement to use the same Python version which was used to build the executable.
 
+pyinstxtractor-ng also supports automatic decryption of encrypted pyinstaller executables.
 
 ## Usage
 
@@ -16,6 +17,10 @@ These are generated using PyInstaller itself, so you don't even need a Python in
 $ ./pyinstxtractor-ng <filename>
 X:\> pyinstxtractor-ng <filename>
 ```
+
+## See Also
+
+- [pyinstxtractor-web](https://pyinstxtractor-web.netlify.app/): pyinstxtractor running in the web browser, powered by Go & GopherJS.
 
 ## License
 

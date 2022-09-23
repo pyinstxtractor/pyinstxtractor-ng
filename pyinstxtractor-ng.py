@@ -21,6 +21,9 @@ import struct
 
 from uuid import uuid4 as uniquename
 
+from Crypto.Cipher import AES
+from Crypto.Util import Counter
+
 from xdis.unmarshal import load_code
 
 
@@ -51,6 +54,8 @@ class PyInstArchive:
         self.filePath = path
         self.pycMagic = b"\0" * 4
         self.barePycList = []  # List of pyc's whose headers have to be fixed
+        self.cryptoKey = None
+        self.cryptoKeyFileData = None
 
     def open(self):
         try:
@@ -280,6 +285,12 @@ class PyInstArchive:
                         self.pycMagic = data[0:4]
                     self._writeRawData(entry.name + ".pyc", data)
 
+                    if entry.name.endswith("_crypto_key"):
+                        print(
+                            "[+] Detected _crypto_key file, saving key for automatic decryption"
+                        )
+                        self.cryptoKeyFileData = data[4:]
+
                 else:
                     # >= pyinstaller 5.3
                     if self.pycMagic == b"\0" * 4:
@@ -287,6 +298,12 @@ class PyInstArchive:
                         self.barePycList.append(entry.name + ".pyc")
 
                     self._writePyc(entry.name + ".pyc", data)
+
+                    if entry.name.endswith("_crypto_key"):
+                        print(
+                            "[+] Detected _crypto_key file, saving key for automatic decryption"
+                        )
+                        self.cryptoKeyFileData = data
 
             else:
                 self._writeRawData(entry.name, data)
@@ -317,6 +334,36 @@ class PyInstArchive:
                     pycFile.write(b"\0" * 4)  # Size parameter added in Python 3.3
 
             pycFile.write(data)
+
+    def _getCryptoKey(self):
+        if self.cryptoKey:
+            return self.cryptoKey
+
+        if not self.cryptoKeyFileData:
+            return None
+
+        co = load_code(self.cryptoKeyFileData, pycHeader2Magic(self.pycMagic))
+        self.cryptoKey = co.co_consts[0]
+        return self.cryptoKey
+
+    def _tryDecrypt(self, ct):
+        CRYPT_BLOCK_SIZE = 16
+
+        key = bytes(self._getCryptoKey(), "utf-8")
+        assert len(key) == 16
+
+        # Initialization vector
+        iv = ct[:CRYPT_BLOCK_SIZE]
+
+        try:
+            # Pyinstaller >= 4.0 uses AES in CTR mode
+            ctr = Counter.new(128, initial_value=int.from_bytes(iv, byteorder="big"))
+            cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
+            return cipher.decrypt(ct[CRYPT_BLOCK_SIZE:])
+        except:
+            # Pyinstaller < 4.0 uses AES in CFB mode
+            cipher = AES.new(key, AES.MODE_CFB, iv)
+            return cipher.decrypt(ct[CRYPT_BLOCK_SIZE:])
 
     def _extractPyz(self, name):
         dirName = name + "_extracted"
@@ -386,12 +433,20 @@ class PyInstArchive:
                     data = f.read(length)
                     data = zlib.decompress(data)
                 except:
-                    print(
-                        "[!] Error: Failed to decompress {0}, probably encrypted. Extracting as is.".format(
-                            filePath
+                    try:
+                        # Automatic decryption
+                        data = self._tryDecrypt(data)
+                        data = zlib.decompress(data)
+                    except:
+                        print(
+                            "[!] Error: Failed to decrypt & decompress {0}. Extracting as is.".format(
+                                filePath
+                            )
                         )
-                    )
-                    open(filePath + ".encrypted", "wb").write(data)
+                        open(filePath + ".encrypted", "wb").write(data)
+                    else:
+                        self._writePyc(filePath, data)
+
                 else:
                     self._writePyc(filePath, data)
 

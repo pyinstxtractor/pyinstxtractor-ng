@@ -1,1 +1,2 @@
 xdis==6.0.4
+PyCryptoDome==3.15.0
