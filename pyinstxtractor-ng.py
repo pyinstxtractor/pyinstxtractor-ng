@@ -289,7 +289,9 @@ class PyInstArchive:
                         print(
                             "[+] Detected _crypto_key file, saving key for automatic decryption"
                         )
-                        self.cryptoKeyFileData = data[4:]
+                        # This is a pyc file with a header (8,12, or 16 bytes)
+                        # Extract the code object after the header
+                        self.cryptoKeyFileData = self._extractCryptoKeyObject(data)
 
                 else:
                     # >= pyinstaller 5.3
@@ -303,6 +305,7 @@ class PyInstArchive:
                         print(
                             "[+] Detected _crypto_key file, saving key for automatic decryption"
                         )
+                        # This is a plain code object without a header
                         self.cryptoKeyFileData = data
 
             else:
@@ -319,6 +322,17 @@ class PyInstArchive:
             with open(pycFile, "r+b") as pycFile:
                 # Overwrite the first four bytes
                 pycFile.write(self.pycMagic)
+
+    def _extractCryptoKeyObject(self, data):
+        if self.pymaj >= 3 and self.pymin >= 7:
+            # 16 byte header for 3.7 and above
+            return data[16:]
+        elif self.pymaj >= 3 and self.pymin >= 3:
+            # 12 byte header for 3.3-3.6
+            return data[12:]
+        else:
+            # 8 byte header for 2.x, 3.0-3.2
+            return data[8:]
 
     def _writePyc(self, filename, data):
         with open(filename, "wb") as pycFile:
