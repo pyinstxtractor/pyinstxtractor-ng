@@ -1,5 +1,5 @@
 """
-PyInstaller Extractor NG v1.0 (Supports pyinstaller 5.4.1, 5.4, 5.3, 5.2, 5.1, 5.0.1, 5.0, 4.10, 4.9, 4.8, 4.7, 4.6, 4.5.1, 4.5, 4.4, 4.3, 4.2, 4.1, 4.0, 3.6, 3.5, 3.4, 3.3, 3.2, 3.1, 3.0, 2.1, 2.0)
+PyInstaller Extractor NG v1.0 (Supports pyinstaller 5.6.2, 5.6.1, 5.6, 5.5, 5.4.1, 5.4, 5.3, 5.2, 5.1, 5.0.1, 5.0, 4.10, 4.9, 4.8, 4.7, 4.6, 4.5.1, 4.5, 4.4, 4.3, 4.2, 4.1, 4.0, 3.6, 3.5, 3.4, 3.3, 3.2, 3.1, 3.0, 2.1, 2.0)
 Author : Extreme Coders
 E-mail : extremecoders(at)hotmail(dot)com
 Web    : https://0xec.blogspot.com
@@ -136,7 +136,7 @@ class PyInstArchive:
 
                 # Read CArchive cookie
                 (magic, lengthofPackage, toc, tocLen, pyver, pylibname) = struct.unpack(
-                    "!8siiii64s", self.fPtr.read(self.PYINST21_COOKIE_SIZE)
+                    "!8sIIii64s", self.fPtr.read(self.PYINST21_COOKIE_SIZE)
                 )
 
         except:
@@ -178,7 +178,7 @@ class PyInstArchive:
         # Parse table of contents
         while parsedLen < self.tableOfContentsSize:
             (entrySize,) = struct.unpack("!i", self.fPtr.read(4))
-            nameLen = struct.calcsize("!iiiiBc")
+            nameLen = struct.calcsize("!iIIIBc")
 
             (
                 entryPos,
@@ -188,7 +188,7 @@ class PyInstArchive:
                 typeCmprsData,
                 name,
             ) = struct.unpack(
-                "!iiiBc{0}s".format(entrySize - nameLen), self.fPtr.read(entrySize - 4)
+                "!IIIBc{0}s".format(entrySize - nameLen), self.fPtr.read(entrySize - 4)
             )
 
             name = name.decode("utf-8").rstrip("\0")
