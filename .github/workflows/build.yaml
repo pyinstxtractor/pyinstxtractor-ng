@@ -3,15 +3,16 @@ on: workflow_dispatch
 
 jobs:
   build-linux:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
+    container: ubuntu:18.04
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.8'
       - run: |
-          python -m pip install -r requirements-dev.txt
-          python -m PyInstaller -F pyinstxtractor-ng.py
+          apt update && apt install wget tar binutils --yes
+          wget https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.8.16+20230116-x86_64-unknown-linux-gnu-install_only.tar.gz && \
+          tar xf cpython-3.8.16+20230116-x86_64-unknown-linux-gnu-install_only.tar.gz && \
+          ./python/bin/python3.8 -m pip install -r requirements-dev.txt && \
+          ./python/bin/python3.8 -m PyInstaller -F pyinstxtractor-ng.py
 
       - name: Set release date
         run: echo "RELEASE_DATE=$(date -u +%Y.%m.%d)" >> ${GITHUB_ENV}
