@@ -16,8 +16,28 @@ Precompiled binaries for Linux and Windows are provided in [releases](https://gi
 These are generated using PyInstaller itself, so you don't even need a Python installation to run pyinstxtractor-ng
 
 ```
+PyInstaller Extractor NG
+
+positional arguments:
+  filename       Path to the file to extract
+
+optional arguments:
+  -h, --help     show this help message and exit
+  -d, --one-dir  One directory mode, extracts the pyz to the same directory
+```
+
+Pass the exe filename as an argument or drag & drop the pyinstaller exe file over pyinstxtractor.ng icon on Windows.
+```
 $ ./pyinstxtractor-ng <filename>
 X:\> pyinstxtractor-ng <filename>
+```
+
+The `--one-dir` mode extracts the pyz in the same directory as the executable. This is useful if you want to run the extracted files straight-away.
+
+```
+X:\> pyinstxtractor-ng --one-dir main.exe
+X:\> cd main.exe_extracted
+X:\main.exe_extracted\> python main.py
 ```
 
 ## See Also

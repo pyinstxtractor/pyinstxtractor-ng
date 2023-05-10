@@ -18,6 +18,7 @@ import os
 import sys
 import zlib
 import struct
+import argparse
 
 from uuid import uuid4 as uniquename
 
@@ -229,7 +230,7 @@ class PyInstArchive:
         with open(nm, "wb") as f:
             f.write(data)
 
-    def extractFiles(self):
+    def extractFiles(self, one_dir):
         print("[+] Beginning extraction...please standby")
         extractionDir = os.path.join(
             os.getcwd(), os.path.basename(self.filePath) + "_extracted"
@@ -312,7 +313,7 @@ class PyInstArchive:
                 self._writeRawData(entry.name, data)
 
                 if entry.typeCmprsData == b"z" or entry.typeCmprsData == b"Z":
-                    self._extractPyz(entry.name)
+                    self._extractPyz(entry.name, one_dir)
 
         # Fix bare pyc's if any
         self._fixBarePycs()
@@ -379,11 +380,14 @@ class PyInstArchive:
             cipher = AES.new(key, AES.MODE_CFB, iv)
             return cipher.decrypt(ct[CRYPT_BLOCK_SIZE:])
 
-    def _extractPyz(self, name):
-        dirName = name + "_extracted"
-        # Create a directory for the contents of the pyz
-        if not os.path.exists(dirName):
-            os.mkdir(dirName)
+    def _extractPyz(self, name, one_dir):
+        if one_dir == True:
+            dirName = "."
+        else:
+            dirName = name + "_extracted"
+            # Create a directory for the contents of the pyz
+            if not os.path.exists(dirName):
+                os.mkdir(dirName)
 
         with open(name, "rb") as f:
             pyzMagic = f.read(4)
@@ -466,29 +470,35 @@ class PyInstArchive:
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("[+] Usage: pyinstxtractor.py <filename>")
+    parser = argparse.ArgumentParser(description="PyInstaller Extractor NG")
+    parser.add_argument("filename", help="Path to the file to extract")
+    parser.add_argument(
+        "-d",
+        "--one-dir",
+        help="One directory mode, extracts the pyz in the same directory as the executable",
+        action="store_true",
+    )
+    args = parser.parse_args()
 
-    else:
-        arch = PyInstArchive(sys.argv[1])
-        if arch.open():
-            if arch.checkFile():
-                if arch.getCArchiveInfo():
-                    arch.parseTOC()
-                    arch.extractFiles()
-                    arch.close()
-                    print(
-                        "[+] Successfully extracted pyinstaller archive: {0}".format(
-                            sys.argv[1]
-                        )
+    arch = PyInstArchive(args.filename)
+    if arch.open():
+        if arch.checkFile():
+            if arch.getCArchiveInfo():
+                arch.parseTOC()
+                arch.extractFiles(args.one_dir)
+                arch.close()
+                print(
+                    "[+] Successfully extracted pyinstaller archive: {0}".format(
+                        args.filename
                     )
-                    print("")
-                    print(
-                        "You can now use a python decompiler on the pyc files within the extracted directory"
-                    )
-                    return
+                )
+                print("")
+                print(
+                    "You can now use a python decompiler on the pyc files within the extracted directory"
+                )
+                return
 
-            arch.close()
+        arch.close()
 
 
 if __name__ == "__main__":
