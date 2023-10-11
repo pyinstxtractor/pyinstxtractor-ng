@@ -371,7 +371,7 @@ class PyInstArchive:
         self.cryptoKey = co.co_consts[0]
         return self.cryptoKey
 
-    def _tryDecrypt(self, ct):
+    def _tryDecrypt(self, ct, aes_mode):
         CRYPT_BLOCK_SIZE = 16
 
         key = bytes(self._getCryptoKey(), "utf-8")
@@ -380,15 +380,16 @@ class PyInstArchive:
         # Initialization vector
         iv = ct[:CRYPT_BLOCK_SIZE]
 
-        try:
+        if aes_mode == "ctr":
             # Pyinstaller >= 4.0 uses AES in CTR mode
             ctr = Counter.new(128, initial_value=int.from_bytes(iv, byteorder="big"))
             cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
             return cipher.decrypt(ct[CRYPT_BLOCK_SIZE:])
-        except:
+
+        elif aes_mode == "cfb":
             # Pyinstaller < 4.0 uses AES in CFB mode
             cipher = AES.new(key, AES.MODE_CFB, iv)
-            return cipher.decrypt(ct[CRYPT_BLOCK_SIZE:])
+            return cipher.decrypt(ct[CRYPT_BLOCK_SIZE:])            
 
     def _extractPyz(self, name, one_dir):
         if one_dir == True:
@@ -463,20 +464,28 @@ class PyInstArchive:
                 except:
                     try:
                         # Automatic decryption
-                        data = self._tryDecrypt(data)
+                        # Make a copy
+                        data_copy = data
+
+                        # Try CTR mode, Pyinstaller >= 4.0 uses AES in CTR mode
+                        data = self._tryDecrypt(data, "ctr")
                         data = zlib.decompress(data)
                     except:
-                        print(
-                            "[!] Error: Failed to decrypt & decompress {0}. Extracting as is.".format(
-                                filePath
+                        # Try CFB mode, Pyinstaller < 4.0 uses AES in CFB mode
+                        try:
+                            data = data_copy
+                            data = self._tryDecrypt(data, "cfb")
+                            data = zlib.decompress(data)
+                        except:
+                            print(
+                                "[!] Error: Failed to decrypt & decompress {0}. Extracting as is.".format(
+                                    filePath
+                                )
                             )
-                        )
-                        open(filePath + ".encrypted", "wb").write(data)
-                    else:
-                        self._writePyc(filePath, data)
-
-                else:
-                    self._writePyc(filePath, data)
+                            open(filePath + ".encrypted", "wb").write(data)
+                            continue
+                
+                self._writePyc(filePath, data)
 
 
 def main():
