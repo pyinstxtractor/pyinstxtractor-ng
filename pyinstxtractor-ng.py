@@ -482,7 +482,7 @@ class PyInstArchive:
                                     filePath
                                 )
                             )
-                            open(filePath + ".encrypted", "wb").write(data)
+                            open(filePath + ".encrypted", "wb").write(data_copy)
                             continue
                 
                 self._writePyc(filePath, data)
