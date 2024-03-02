@@ -8,8 +8,6 @@ pyinstxtractor-ng uses the [xdis](https://github.com/rocky/python-xdis/) library
 
 pyinstxtractor-ng also supports automatic decryption of encrypted pyinstaller executables.
 
-Note: Python 3.11 executables are not fully supported yet as the underlying library xdis doesn't support 3.11 at the moment. The executable will be still extracted but the PYZ won't be.
-
 ## Usage
 
 Precompiled binaries for Linux and Windows are provided in [releases](https://github.com/pyinstxtractor/pyinstxtractor-ng/releases). 
