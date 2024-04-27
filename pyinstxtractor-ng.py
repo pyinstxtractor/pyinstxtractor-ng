@@ -81,7 +81,7 @@ class PyInstArchive:
         self.cookiePos = -1
 
         if endPos < len(self.MAGIC):
-            print("[!] Error : File is too short or truncated")
+            print("[!] Error: File is too short or truncated")
             return False
 
         while True:
@@ -107,7 +107,7 @@ class PyInstArchive:
 
         if self.cookiePos == -1:
             print(
-                "[!] Error : Missing cookie, unsupported pyinstaller version or not a pyinstaller archive"
+                "[!] Error: Missing cookie, unsupported pyinstaller version or not a pyinstaller archive"
             )
             return False
 
@@ -141,7 +141,7 @@ class PyInstArchive:
                 )
 
         except:
-            print("[!] Error : The file is not a pyinstaller archive")
+            print("[!] Error: The file is not a pyinstaller archive")
             return False
 
         self.pymaj, self.pymin = (
