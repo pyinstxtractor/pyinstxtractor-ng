@@ -27,6 +27,8 @@ from Crypto.Util import Counter
 
 from xdis.unmarshal import load_code
 
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 def pycHeader2Magic(header):
     header = bytearray(header)
@@ -63,7 +65,7 @@ class PyInstArchive:
             self.fPtr = open(self.filePath, "rb")
             self.fileSize = os.stat(self.filePath).st_size
         except:
-            print("[!] Error: Could not open {0}".format(self.filePath))
+            eprint("[!] Error: Could not open {0}".format(self.filePath))
             return False
         return True
 
@@ -81,7 +83,7 @@ class PyInstArchive:
         self.cookiePos = -1
 
         if endPos < len(self.MAGIC):
-            print("[!] Error: File is too short or truncated")
+            eprint("[!] Error: File is too short or truncated")
             return False
 
         while True:
@@ -106,7 +108,7 @@ class PyInstArchive:
                 break
 
         if self.cookiePos == -1:
-            print(
+            eprint(
                 "[!] Error: Missing cookie, unsupported pyinstaller version or not a pyinstaller archive"
             )
             return False
@@ -141,7 +143,7 @@ class PyInstArchive:
                 )
 
         except:
-            print("[!] Error: The file is not a pyinstaller archive")
+            eprint("[!] Error: The file is not a pyinstaller archive")
             return False
 
         self.pymaj, self.pymin = (
@@ -477,7 +479,7 @@ class PyInstArchive:
                             data = self._tryDecrypt(data, "cfb")
                             data = zlib.decompress(data)
                         except:
-                            print(
+                            eprint(
                                 "[!] Error: Failed to decrypt & decompress {0}. Extracting as is.".format(
                                     filePath
                                 )
