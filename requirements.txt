@@ -1,2 +1,2 @@
-xdis @ git+https://github.com/rocky/python-xdis@667c8a8
+xdis==6.1.0
 PyCryptoDome==3.17
