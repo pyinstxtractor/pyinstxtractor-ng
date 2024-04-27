@@ -517,9 +517,10 @@ def main():
                 print(
                     "You can now use a python decompiler on the pyc files within the extracted directory"
                 )
-                return
+                sys.exit(0)
 
         arch.close()
+    sys.exit(1)
 
 
 if __name__ == "__main__":
