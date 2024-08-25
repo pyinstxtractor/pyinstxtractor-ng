@@ -1,2 +1,2 @@
-xdis==6.1.0
+xdis==6.1.1
 PyCryptoDome==3.17
