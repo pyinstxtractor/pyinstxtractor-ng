@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "pyinstxtractor-ng"
+version = "2025.01.05"
+description = "PyInstaller Extractor Next Generation"
+authors = ["extremecoders-re"]
+license = "GPL-3.0-only"
+readme = "README.md"
+packages = [
+    { include = "pyinstxtractor-ng.py" }
+]
+
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.13"
+xdis = "6.1.3"
+pycryptodome = "3.17"
+
+[tool.poetry.scripts]
+pyinstxtractor-ng = 'pyinstxtractor-ng:main'
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
