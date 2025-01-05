@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyinstxtractor-ng"
-version = "2025.01.06"
+version = "2025.01.05"
 description = "PyInstaller Extractor Next Generation"
 authors = ["extremecoders-re"]
 license = "GPL-3.0-only"
