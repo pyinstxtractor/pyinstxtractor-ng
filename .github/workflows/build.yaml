@@ -19,7 +19,7 @@ jobs:
           curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
           ./bin/micromamba create -r ~/micromamba -n py38 -c conda-forge python=3.8 --yes
           ./bin/micromamba run -r ~/micromamba -n py38 pip install -r requirements-dev.txt
-          ./bin/micromamba run -r ~/micromamba -n py38 pyinstaller -F pyinstxtractor-ng.py
+          ./bin/micromamba run -r ~/micromamba -n py38 pyinstaller -F pyinstxtractor_ng.py --name pyinstxtractor-ng
 
       - name: Set release date
         run: echo "RELEASE_DATE=$(date -u +%Y.%m.%d)" >> ${GITHUB_ENV}
@@ -44,7 +44,7 @@ jobs:
           python-version: '3.8'
       - run: |
           python -m pip install -r requirements-dev.txt
-          python -m PyInstaller -F pyinstxtractor-ng.py
+          python -m PyInstaller -F pyinstxtractor_ng.py --name pyinstxtractor-ng
 
       - name: Set release date
         shell: bash
