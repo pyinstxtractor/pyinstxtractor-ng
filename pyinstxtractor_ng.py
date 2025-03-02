@@ -1,19 +1,3 @@
-"""
-PyInstaller Extractor NG v1.0 (Supports pyinstaller 5.10.1, 5.10.0, 5.9.0, 5.8.0, 5.7.0, 5.6.2, 5.6.1, 5.6, 5.5, 5.4.1, 5.4, 5.3, 5.2, 5.1, 5.0.1, 5.0, 4.10, 4.9, 4.8, 4.7, 4.6, 4.5.1, 4.5, 4.4, 4.3, 4.2, 4.1, 4.0, 3.6, 3.5, 3.4, 3.3, 3.2, 3.1, 3.0, 2.1, 2.0)
-Author : Extreme Coders
-E-mail : extremecoders(at)hotmail(dot)com
-Web    : https://0xec.blogspot.com
-Url    : https://github.com/pyinstxtractor/pyinstxtractor-ng
-
-This script extracts a pyinstaller generated executable file. 
-Uses the xdis library to unmarshal code objects, hence you should
-be able to decompile an executable from any Python version without
-being restricted to use the same version of Python for running the
-script as well.
-
-Licensed under GNU General Public License (GPL) v3.
-"""
-
 import os
 import sys
 import zlib
@@ -27,13 +11,38 @@ from Crypto.Util import Counter
 
 from xdis.unmarshal import load_code
 
+
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
 
 def pycHeader2Magic(header):
     header = bytearray(header)
     magicNumber = bytearray(header[:2])
     return magicNumber[1] << 8 | magicNumber[0]
+
+
+def list_exe_files():
+    exe_files = [f for f in os.listdir() if f.endswith('.exe')]
+    if not exe_files:
+        eprint("[!] No executable files found in the current directory.")
+        sys.exit(1)
+    return exe_files
+
+
+def select_file(exe_files):
+    print("[+] Found the following executable files:\n")
+    for idx, file in enumerate(exe_files):
+        print(f"{idx + 1}: {file}")
+    while True:
+        try:
+            choice = int(input("\nSelect program to extract: "))
+            if 1 <= choice <= len(exe_files):
+                return exe_files[choice - 1]
+            else:
+                print("[!] Invalid choice, please select a valid number.")
+        except ValueError:
+            print("[!] Invalid input, please enter a number.")
 
 
 class CTOCEntry:
@@ -76,7 +85,7 @@ class PyInstArchive:
             pass
 
     def checkFile(self):
-        print("[+] Processing {0}".format(self.filePath))
+        print("\n[+] Processing {0}".format(self.filePath))
 
         searchChunkSize = 8192
         endPos = self.fileSize
@@ -299,12 +308,14 @@ class PyInstArchive:
                     self._writeRawData(entry.name + ".pyc", data)
 
                     if entry.name.endswith("_crypto_key"):
-                        print(
-                            "[+] Detected _crypto_key file, saving key for automatic decryption"
-                        )
                         # This is a pyc file with a header (8,12, or 16 bytes)
                         # Extract the code object after the header
                         self.cryptoKeyFileData = self._extractCryptoKeyObject(data)
+                        co = load_code(self.cryptoKeyFileData, pycHeader2Magic(self.pycMagic))
+                        self.cryptoKey = co.co_consts[0]
+                        print(
+                            "[+] Detected _crypto_key file, saving key for automatic decryption: " + self.cryptoKey
+                        )
 
                 else:
                     # >= pyinstaller 5.3
@@ -315,11 +326,13 @@ class PyInstArchive:
                     self._writePyc(entry.name + ".pyc", data)
 
                     if entry.name.endswith("_crypto_key"):
-                        print(
-                            "[+] Detected _crypto_key file, saving key for automatic decryption"
-                        )
                         # This is a plain code object without a header
                         self.cryptoKeyFileData = data
+                        co = load_code(self.cryptoKeyFileData, pycHeader2Magic(self.pycMagic))
+                        self.cryptoKey = co.co_consts[0]
+                        print(
+                            "[+] Detected _crypto_key file, saving key for automatic decryption: " + self.cryptoKey
+                        )
 
             else:
                 self._writeRawData(entry.name, data)
@@ -332,6 +345,8 @@ class PyInstArchive:
 
     def _fixBarePycs(self):
         for pycFile in self.barePycList:
+            import re
+            pycFile = re.sub(r'[^\x20-\x7E]', '', pycFile) ################################################################################################################ BwE Changes
             with open(pycFile, "r+b") as pycFile:
                 # Overwrite the first four bytes
                 pycFile.write(self.pycMagic)
@@ -348,6 +363,8 @@ class PyInstArchive:
             return data[8:]
 
     def _writePyc(self, filename, data):
+        import re
+        filename = re.sub(r'[^\x20-\x7E]', '', filename) ################################################################################################################ BwE Changes
         with open(filename, "wb") as pycFile:
             pycFile.write(self.pycMagic)  # pyc magic
 
@@ -492,7 +509,6 @@ class PyInstArchive:
 
 def main():
     parser = argparse.ArgumentParser(description="PyInstaller Extractor NG")
-    parser.add_argument("filename", help="Path to the file to extract")
     parser.add_argument(
         "-d",
         "--one-dir",
@@ -501,7 +517,10 @@ def main():
     )
     args = parser.parse_args()
 
-    arch = PyInstArchive(args.filename)
+    exe_files = list_exe_files()
+    selected_file = select_file(exe_files)
+
+    arch = PyInstArchive(selected_file)
     if arch.open():
         if arch.checkFile():
             if arch.getCArchiveInfo():
@@ -510,18 +529,56 @@ def main():
                 arch.close()
                 print(
                     "[+] Successfully extracted pyinstaller archive: {0}".format(
-                        args.filename
+                        selected_file
                     )
                 )
-                print("")
-                print(
-                    "You can now use a python decompiler on the pyc files within the extracted directory"
-                )
-                sys.exit(0)
+                print("\nYou can now use a python decompiler on the pyc files within the extracted directory\n")
+                print("\n\nPress Enter to Exit...")
+                input()
+                os._exit(0)
+                sys.exit(1)
 
         arch.close()
+    print("\n\nPress Enter to Exit...")
+    input()
+    os._exit(0)
     sys.exit(1)
 
 
 if __name__ == "__main__":
+    
+    def print_banner() -> str:
+        sys.stdout.write("\x1b[8;{rows};{cols}t".format(rows=32, cols=130))
+        banner = r"""
+              .__                 __            __                        __                                         
+______ ___.__.|__| ____   _______/  |____  ____/  |_____________    _____/  |_  ___________            ____    ____  
+\____ <   |  ||  |/    \ /  ___/\   __\  \/  /\   __\_  __ \__  \ _/ ___\   __\/  _ \_  __ \  ______  /    \  / ___\ 
+|  |_> >___  ||  |   |  \\___ \  |  |  >    <  |  |  |  | \// __ \\  \___|  | (  <_> )  | \/ /_____/ |   |  \/ /_/  >
+|   __// ____||__|___|  /____  > |__| /__/\_ \ |__|  |__|  (____  /\___  >__|  \____/|__|            |___|  /\___  / 
+|__|   \/             \/     \/             \/                  \/     \/   Modified By BwE               \//_____/  
+    """
+        os.system("")
+        faded_banner = ""
+        blue = 0
+        for line in banner.splitlines():
+            faded_banner += (f"\033[38;2;0;255;{blue}m{line}\033[0m\n")
+            if blue != 255:
+                blue += 60
+                if blue > 255:
+                    blue = 255
+        return faded_banner
+
+
+    def fade(text: str) -> str:
+        os.system("")
+        faded = ""
+        green = 194
+        for line in text:
+            faded += (f"\033[38;2;0;{green};199m{line}\033[0m")
+            if green != 0:
+                green -= 6
+                if green < 0:
+                    green = 0
+        return faded
+    print(print_banner())
     main()

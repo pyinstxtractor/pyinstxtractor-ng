@@ -1,12 +1,17 @@
 # pyinstxtractor-ng
 
+![Nice UI](https://i.imgur.com/wSgYel4.png)
+
 pyinstxtractor-ng is a tool to extract the contents of a Pyinstaller generated executable file. Both Linux ELFs and Windows PE executables are supported.
 
-This project is a fork of [pyinstxtractor](https://github.com/extremecoders-re/pyinstxtractor).
+*This project is a fork of [pyinstxtractor](https://github.com/extremecoders-re/pyinstxtractor).*
 
 pyinstxtractor-ng uses the [xdis](https://github.com/rocky/python-xdis/) library to unmarshal Python bytecode and as a result there is NO requirement to use the same Python version which was used to build the executable.
 
 pyinstxtractor-ng also supports automatic decryption of encrypted pyinstaller executables.
+
+## BwE Changes (Why I forked it...)
+I gave it a nice UI so you can pick and choose .exe files within the CWD. I also added the ability to extract files with corrupted filenames (purposely or otherwise).
 
 ## Usage
 
