@@ -19,6 +19,7 @@ import sys
 import zlib
 import struct
 import argparse
+from clc99 import *
 
 from uuid import uuid4 as uniquename
 
@@ -27,8 +28,6 @@ from Crypto.Util import Counter
 
 from xdis.unmarshal import load_code
 
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
 
 def pycHeader2Magic(header):
     header = bytearray(header)
@@ -65,7 +64,7 @@ class PyInstArchive:
             self.fPtr = open(self.filePath, "rb")
             self.fileSize = os.stat(self.filePath).st_size
         except:
-            eprint("[!] Error: Could not open {0}".format(self.filePath))
+            print_error("Could not open {0}".format(self.filePath),file=sys.stderr)
             return False
         return True
 
@@ -76,14 +75,14 @@ class PyInstArchive:
             pass
 
     def checkFile(self):
-        print("[+] Processing {0}".format(self.filePath))
+        print_status("Processing {0}".format(self.filePath))
 
         searchChunkSize = 8192
         endPos = self.fileSize
         self.cookiePos = -1
 
         if endPos < len(self.MAGIC):
-            eprint("[!] Error: File is too short or truncated")
+            print_error("File is too short or truncated",file=sys.stderr)
             return False
 
         while True:
@@ -108,19 +107,19 @@ class PyInstArchive:
                 break
 
         if self.cookiePos == -1:
-            eprint(
-                "[!] Error: Missing cookie, unsupported pyinstaller version or not a pyinstaller archive"
-            )
+            print_error(
+                "Missing cookie, unsupported pyinstaller version or not a pyinstaller archive",
+            file=sys.stderr)
             return False
 
         self.fPtr.seek(self.cookiePos + self.PYINST20_COOKIE_SIZE, os.SEEK_SET)
 
         if b"python" in self.fPtr.read(64).lower():
-            print("[+] Pyinstaller version: 2.1+")
+            print_good("Pyinstaller version: 2.1+")
             self.pyinstVer = 21  # pyinstaller 2.1+
         else:
             self.pyinstVer = 20  # pyinstaller 2.0
-            print("[+] Pyinstaller version: 2.0")
+            print_good("Pyinstaller version: 2.0")
 
         return True
 
@@ -143,13 +142,13 @@ class PyInstArchive:
                 )
 
         except:
-            eprint("[!] Error: The file is not a pyinstaller archive")
+            print_error("The file is not a pyinstaller archive",file=sys.stderr)
             return False
 
         self.pymaj, self.pymin = (
             (pyver // 100, pyver % 100) if pyver >= 100 else (pyver // 10, pyver % 10)
         )
-        print("[+] Python version: {0}.{1}".format(self.pymaj, self.pymin))
+        print_good("Python version: {0}.{1}".format(self.pymaj, self.pymin))
 
         # Additional data after the cookie
         tailBytes = (
@@ -168,7 +167,7 @@ class PyInstArchive:
         self.tableOfContentsPos = self.overlayPos + toc
         self.tableOfContentsSize = tocLen
 
-        print("[+] Length of package: {0} bytes".format(lengthofPackage))
+        print_status("Length of package: {0} bytes".format(lengthofPackage))
         return True
 
     def parseTOC(self):
@@ -198,7 +197,7 @@ class PyInstArchive:
                 name = name.decode("utf-8").rstrip("\0")
             except UnicodeDecodeError:
                 newName = str(uniquename())
-                print('[!] Warning: File name {0} contains invalid bytes. Using random name {1}'.format(name, newName))
+                print_warning('Warning: File name {0} contains invalid bytes. Using random name {1}'.format(name, newName),file=sys.stderr)
                 name = newName
 
             # Prevent writing outside the extraction directory
@@ -207,10 +206,10 @@ class PyInstArchive:
 
             if len(name) == 0:
                 name = str(uniquename())
-                print(
-                    "[!] Warning: Found an unamed file in CArchive. Using random name {0}".format(
+                print_warning(
+                    "Warning: Found an unamed file in CArchive. Using random name {0}".format(
                         name
-                    )
+                    ),file=sys.stderr
                 )
 
             self.tocList.append(
@@ -225,7 +224,7 @@ class PyInstArchive:
             )
 
             parsedLen += entrySize
-        print("[+] Found {0} files in CArchive".format(len(self.tocList)))
+        print_good("Found {0} files in CArchive".format(len(self.tocList)))
 
     def _writeRawData(self, filepath, data):
         nm = (
@@ -243,7 +242,7 @@ class PyInstArchive:
             f.write(data)
 
     def extractFiles(self, one_dir):
-        print("[+] Beginning extraction...please standby")
+        print_good("Beginning extraction...please standby")
         extractionDir = os.path.join(
             os.getcwd(), os.path.basename(self.filePath) + "_extracted"
         )
@@ -278,7 +277,7 @@ class PyInstArchive:
             if entry.typeCmprsData == b"s":
                 # s -> ARCHIVE_ITEM_PYSOURCE
                 # Entry point are expected to be python scripts
-                print("[+] Possible entry point: {0}.pyc".format(entry.name))
+                print_status("Possible entry point: {0}.pyc".format(entry.name))
 
                 if self.pycMagic == b"\0" * 4:
                     # if we don't have the pyc header yet, fix them in a later pass
@@ -299,8 +298,8 @@ class PyInstArchive:
                     self._writeRawData(entry.name + ".pyc", data)
 
                     if entry.name.endswith("_crypto_key"):
-                        print(
-                            "[+] Detected _crypto_key file, saving key for automatic decryption"
+                        print_good(
+                            "Detected _crypto_key file, saving key for automatic decryption"
                         )
                         # This is a pyc file with a header (8,12, or 16 bytes)
                         # Extract the code object after the header
@@ -315,8 +314,8 @@ class PyInstArchive:
                     self._writePyc(entry.name + ".pyc", data)
 
                     if entry.name.endswith("_crypto_key"):
-                        print(
-                            "[+] Detected _crypto_key file, saving key for automatic decryption"
+                        print_good(
+                            "Detected _crypto_key file, saving key for automatic decryption"
                         )
                         # This is a plain code object without a header
                         self.cryptoKeyFileData = data
@@ -413,8 +412,8 @@ class PyInstArchive:
 
             elif self.pycMagic != pyzPycMagic:
                 self.pycMagic = pyzPycMagic
-                print(
-                    "[!] Warning: pyc magic of files inside PYZ archive are different from those in CArchive"
+                print_warning(
+                    "Warning: pyc magic of files inside PYZ archive are different from those in CArchive",file=sys.stderr
                 )
 
             (tocPosition,) = struct.unpack("!i", f.read(4))
@@ -423,14 +422,14 @@ class PyInstArchive:
             try:
                 toc = load_code(f, pycHeader2Magic(pyzPycMagic))
             except:
-                print(
-                    "[!] Unmarshalling FAILED. Cannot extract {0}. Extracting remaining files.".format(
+                print_warning(
+                    "Unmarshalling FAILED. Cannot extract {0}. Extracting remaining files.".format(
                         name
-                    )
+                    ),file=sys.stderr
                 )
                 return
 
-            print("[+] Found {0} files in PYZ archive".format(len(toc)))
+            print_good("Found {0} files in PYZ archive".format(len(toc)))
 
             # From pyinstaller 3.1+ toc is a list of tuples
             if type(toc) == list:
@@ -482,10 +481,10 @@ class PyInstArchive:
                             data = self._tryDecrypt(data, "cfb")
                             data = zlib.decompress(data)
                         except:
-                            eprint(
-                                "[!] Error: Failed to decrypt & decompress {0}. Extracting as is.".format(
+                            print_error(
+                                "Failed to decrypt & decompress {0}. Extracting as is.".format(
                                     filePath
-                                )
+                                ),file=sys.stderr
                             )
                             open(filePath + ".encrypted", "wb").write(data_copy)
                             continue
@@ -511,13 +510,13 @@ def main():
                 arch.parseTOC()
                 arch.extractFiles(args.one_dir)
                 arch.close()
-                print(
-                    "[+] Successfully extracted pyinstaller archive: {0}".format(
+                print_good(
+                    "Successfully extracted pyinstaller archive: {0}".format(
                         args.filename
                     )
                 )
                 print("")
-                print(
+                print_finish(
                     "You can now use a python decompiler on the pyc files within the extracted directory"
                 )
                 sys.exit(0)
