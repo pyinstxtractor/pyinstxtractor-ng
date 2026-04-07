@@ -22,16 +22,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 2.0.0
+      - name: Install build tools
+        run: pip install build
 
-      - name: Install dependencies
-        run: poetry install --sync --no-interaction
-
-      - name: Package project
-        run: poetry build
+      - name: Build sdist and wheel
+        run: python -m build
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
