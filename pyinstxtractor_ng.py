@@ -61,6 +61,7 @@ class PyInstArchive:
         self.barePycList = []  # List of pyc's whose headers have to be fixed
         self.cryptoKey = None
         self.cryptoKeyFileData = None
+        self.extractionFailed = False
 
     def open(self):
         try:
@@ -278,6 +279,7 @@ class PyInstArchive:
                 try:
                     data = zlib.decompress(data)
                 except zlib.error as e:
+                    self.extractionFailed = True
                     eprint(
                         f"[!] Error: Failed to decompress CArchive entry {entry.name}: {e}"
                     )
@@ -449,8 +451,11 @@ class PyInstArchive:
 
             try:
                 toc = load_code(f, pycHeader2Magic(pyzPycMagic))
+                if not isinstance(toc, (list, dict)):
+                    raise ValueError("Invalid PYZ table of contents")
             except:
-                print(
+                self.extractionFailed = True
+                eprint(
                     "[!] Unmarshalling FAILED. Cannot extract {0}. Extracting remaining files.".format(
                         name
                     )
@@ -480,6 +485,13 @@ class PyInstArchive:
                 # Prevent writing outside dirName
                 fileName = fileName.replace("..", "__").replace(".", os.path.sep)
 
+                if ispkg == 3:
+                    # Namespace packages have no code object (PyInstaller >= 5.6).
+                    namespaceDir = os.path.join(dirName, fileName)
+                    if not os.path.exists(namespaceDir):
+                        os.makedirs(namespaceDir)
+                    continue
+
                 if ispkg == 1:
                     filePath = os.path.join(dirName, fileName, "__init__.pyc")
 
@@ -495,32 +507,36 @@ class PyInstArchive:
                     self._writePyc(filePath, b"")
                     continue
 
+                data = f.read(length)
                 try:
-                    data = f.read(length)
                     data = zlib.decompress(data)
-                except:
-                    try:
-                        # Automatic decryption
-                        # Make a copy
-                        data_copy = data
+                except zlib.error as error:
+                    data_copy = data
+                    data = None
+                    reason = (
+                        "Failed to decompress {0}: {1}; no encryption key available "
+                        "(entry may be corrupt or encrypted)".format(filePath, error)
+                    )
+                    if self.cryptoKey or self.cryptoKeyFileData:
+                        # Keep support for both PyInstaller >= 4.0 (CTR) and < 4.0 (CFB).
+                        for mode in ("ctr", "cfb"):
+                            try:
+                                decrypted = self._tryDecrypt(data_copy, mode)
+                                data = zlib.decompress(decrypted)
+                                break
+                            except Exception:
+                                pass
+                        reason = (
+                            "Failed to decrypt & decompress {0}; "
+                            "key may be incorrect or data corrupt".format(filePath)
+                        )
 
-                        # Try CTR mode, Pyinstaller >= 4.0 uses AES in CTR mode
-                        data = self._tryDecrypt(data, "ctr")
-                        data = zlib.decompress(data)
-                    except:
-                        # Try CFB mode, Pyinstaller < 4.0 uses AES in CFB mode
-                        try:
-                            data = data_copy
-                            data = self._tryDecrypt(data, "cfb")
-                            data = zlib.decompress(data)
-                        except:
-                            eprint(
-                                "[!] Error: Failed to decrypt & decompress {0}. Extracting as is.".format(
-                                    filePath
-                                )
-                            )
-                            open(filePath + ".encrypted", "wb").write(data_copy)
-                            continue
+                    if data is None:
+                        self.extractionFailed = True
+                        eprint("[!] Error: {0}. Extracting as is.".format(reason))
+                        # Retain the historical suffix; it does not prove encryption.
+                        self._writeRawData(filePath + ".encrypted", data_copy)
+                        continue
 
                 self._writePyc(filePath, data)
 
@@ -602,6 +618,14 @@ def main():
                     sys.exit(0)
                 arch.extractFiles(args.one_dir)
                 arch.close()
+                if arch.extractionFailed:
+                    eprint(
+                        "[!] Error: Incomplete extraction of pyinstaller archive: {0}. "
+                        "Successfully extracted files have been retained.".format(
+                            args.filename
+                        )
+                    )
+                    sys.exit(1)
                 print(
                     "[+] Successfully extracted pyinstaller archive: {0}".format(
                         args.filename
