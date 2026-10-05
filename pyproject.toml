@@ -6,7 +6,7 @@ authors = [{ name = "extremecoders-re" }]
 license = "GPL-3.0-only"
 readme = "README.md"
 packages = [{ include = "pyinstxtractor_ng.py" }]
-dependencies = ["xdis==6.3.0", "pycryptodome==3.17"]
+dependencies = ["xdis==6.3.0", "pycryptodome>=3.19.1,<4"]
 requires-python = ">=3.8"
 
 [project.scripts]
