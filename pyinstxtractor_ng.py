@@ -444,12 +444,26 @@ class PyInstArchive:
                     "[!] Warning: pyc magic of files inside PYZ archive are different from those in CArchive"
                 )
 
-            (tocPosition,) = struct.unpack("!i", f.read(4))
-            f.seek(tocPosition, os.SEEK_SET)
+            # PyInstaller <= 1.3 wrote the PYZ TOC offset in native byte order,
+            # while later versions use network byte order. Try both and keep
+            # whichever offset yields a valid TOC.
+            fileSize = os.fstat(f.fileno()).st_size
+            tocPositionBytes = f.read(4)
+            toc = None
+            for byteOrder in ("!", "<"):
+                if len(tocPositionBytes) != 4:
+                    break
+                (tocPosition,) = struct.unpack(byteOrder + "i", tocPositionBytes)
+                if not 0 <= tocPosition < fileSize:
+                    continue
+                f.seek(tocPosition, os.SEEK_SET)
+                try:
+                    toc = load_code(f, pycHeader2Magic(pyzPycMagic))
+                    break
+                except Exception:
+                    continue
 
-            try:
-                toc = load_code(f, pycHeader2Magic(pyzPycMagic))
-            except:
+            if toc is None:
                 print(
                     "[!] Unmarshalling FAILED. Cannot extract {0}. Extracting remaining files.".format(
                         name
